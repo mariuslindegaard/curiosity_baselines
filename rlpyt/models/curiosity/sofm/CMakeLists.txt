@@ -13,7 +13,6 @@ include_directories(
     ${EIGEN3_INCLUDE_DIR}
 )
 
-
 add_library(online_fuzzy_art
     src/sofm/art/OnlineFuzzyART.cpp
 )
@@ -25,7 +24,7 @@ target_link_libraries(online_fuzzy_art PRIVATE
     Eigen3::Eigen
 )
 
-add_subdirectory(pybind11)
+find_package(pybind11 REQUIRED)
 pybind11_add_module(${PROJECT_NAME} module.cpp)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

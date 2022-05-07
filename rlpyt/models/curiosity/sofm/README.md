@@ -23,4 +23,4 @@ This does a system-wide installation, so if you're using conda, you might need t
 ```{bash}
 conda install -c conda-forge pybind11
 ```
-This command is not tested, but installing pybind11 can be found here: https://pybind11.readthedocs.io/en/stable/installing.html.
+This command is not tested, but instructions for installing pybind11 can be found here: https://pybind11.readthedocs.io/en/stable/installing.html.

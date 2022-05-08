@@ -79,7 +79,7 @@ class RND(nn.Module):
                                             nn.Linear(self.feature_size, self.feature_size)
                                             )
         """
-        self.forward_model = MazeHead(image_shape=image_shape, output_size=self.feature_size)
+        self.forward_model = MazeHead(image_shape=image_shape, output_size=self.feature_size).model
 
         for param in self.forward_model:
             if isinstance(param, nn.Conv2d) or isinstance(param, nn.Linear):
@@ -120,7 +120,7 @@ class RND(nn.Module):
                                             nn.Linear(self.conv_feature_size, self.feature_size)
                                         )
         """
-        self.target_model = MazeHead(image_shape=image_shape, output_size=self.feature_size)
+        self.target_model = MazeHead(image_shape=image_shape, output_size=self.feature_size).model
 
         for param in self.target_model:
             if isinstance(param, nn.Conv2d) or isinstance(param, nn.Linear):

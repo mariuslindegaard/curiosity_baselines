@@ -51,6 +51,7 @@ class RND(nn.Module):
         #                                    nn.ReLU(),
         #                                    nn.Linear(self.feature_size, self.feature_size))
 
+        """
         self.forward_model = nn.Sequential(
                                             nn.Conv2d(
                                                 in_channels=1,
@@ -77,6 +78,8 @@ class RND(nn.Module):
                                             nn.ReLU(),
                                             nn.Linear(self.feature_size, self.feature_size)
                                             )
+        """
+        self.forward_model = MazeHead(image_shape=image_shape, output_size=self.feature_size)
 
         for param in self.forward_model:
             if isinstance(param, nn.Conv2d) or isinstance(param, nn.Linear):
@@ -93,6 +96,7 @@ class RND(nn.Module):
         #                                   Flatten(),
         #                                   nn.Linear(self.conv_feature_size, self.feature_size))
 
+        """
         self.target_model = nn.Sequential(
                                             nn.Conv2d(
                                                 in_channels=1,
@@ -115,6 +119,8 @@ class RND(nn.Module):
                                             Flatten(),
                                             nn.Linear(self.conv_feature_size, self.feature_size)
                                         )
+        """
+        self.target_model = MazeHead(image_shape=image_shape, output_size=self.feature_size)
 
         for param in self.target_model:
             if isinstance(param, nn.Conv2d) or isinstance(param, nn.Linear):

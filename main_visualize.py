@@ -126,20 +126,11 @@ class AgentUi(object):
         # What is our total so far? Or None if there is no game being played.
         self._total_return = None
 
-        self.agent = agent
+        self._agent = agent
 
         # For displaying messages logged by game entities in a game console.
         self._log_messages = []
 
-        # The curses `getch` routine returns numeric keycodes, but users can specify
-        # keyboard input as strings as well, so we convert strings to keycodes.
-
-        # We'd like to see whether the user is using any reserved keys here in the
-        # constructor, but we have to wait until curses is actually running to do
-        # that. So, the reserved key check happens in _init_curses_and_play.
-
-        # Save colour mappings and other parameters from the user. Note injection
-        # of defaults and the conversion of character keys to ASCII codepoints.
         self._delay = delay
         self._repainter = repainter
         self._colour_fg = (
@@ -153,20 +144,6 @@ class AgentUi(object):
         # we'll use when we're displaying that character. None for now, since we
         # can't set it up until curses is running.
         self._colour_pair = None
-
-        # If the user specified no croppers or any None croppers, replace them with
-        # pass-through croppers that don't do any cropping.
-        if croppers is None:
-            self._croppers = [cropping.ObservationCropper()]
-        else:
-            self._croppers = croppers
-
-        try:
-            self._croppers = tuple(cropping.ObservationCropper() if c is None else c
-                                   for c in self._croppers)
-        except TypeError:
-            raise TypeError('The croppers argument to the CursesUi constructor must '
-                            'be a sequence or None, not a "bare" object.')
 
     def play(self, env):
         """Play a pycolab game.
@@ -187,13 +164,7 @@ class AgentUi(object):
         if self._game is not None:
             raise RuntimeError('CursesUi is not at all thread safe')
         self._env = env
-        self._game = self._env.make_game()
         self._start_time = datetime.datetime.now()
-        # Inform the croppers which game we're playing.
-        for cropper in self._croppers:
-            cropper.set_engine(self._game)
-
-        # After turning on curses, set it up and play the game.
         curses.wrapper(self._init_curses_and_play)
 
         # The game has concluded. Print the final statistics.
@@ -237,73 +208,38 @@ class AgentUi(object):
         # By default, the log display window is hidden
         paint_console = False
 
-        def crop_and_repaint(observation):
-            # Helper for game display: applies all croppers to the observation, then
-            # repaints the cropped subwindows. Since the same repainter is used for
-            # all subwindows, and since repainters "own" what they return and are
-            # allowed to overwrite it, we copy repainted observations when we have
-            # multiple subwindows.
-            observations = [cropper.crop(observation)
-                            for cropper in self._croppers]
-            if self._repainter:
-                if len(observations) == 1:
-                    return [self._repainter(observations[0])]
-                else:
-                    return [copy.deepcopy(self._repainter(obs)) for obs in observations]
-            else:
-                return observations
-
-        # Kick off the game---get first observation, crop and repaint as needed,
-        # initialise our total return, and display the first frame.
-        observation, reward, _ = self._game.its_showtime()
-        observations = crop_and_repaint(observation)
-        self._total_return = reward
+        observation = self._env.reset()
+        # observations = crop_and_repaint(observation)
+        self._total_return = self._env.last_reward
         self._display(
-            screen, observations, self._total_return, elapsed=datetime.timedelta())
+            screen, [self._env.last_observations], self._total_return, elapsed=datetime.timedelta())
 
-        # Initialize action and reward
-        #     a = env.action_space.null_value()
-        # r = 0
         prev_action = torch.tensor(self._env.act_null_value)
         prev_reward = torch.tensor(0.0)
-        observation = observation_to_tensor(observation)
+
+        done = False
 
         # Oh boy, play the game!
-        while not self._game.game_over:
-            # Wait (or not, depending) for user input, and convert it to an action.
-            # Unrecognised keycodes cause the game display to repaint (updating the
-            # elapsed time clock and potentially showing/hiding/updating the log
-            # message display) but don't trigger a call to the game engine's play()
-            # method. Note that the timeout "keycode" -1 is treated the same as any
-            # other keycode here.
-            # Convert the keycode to a game action and send that to the engine.
-            # Receive a new observation, reward, discount; crop and repaint; update
-            # total return.
+        while not done:
+            observation, reward, done, info = self._env.step(prev_action)
+            observation = torch.from_numpy(observation)
+            action = self._agent.step(observation, prev_action, prev_reward)
 
-            # def step(self, observation, prev_action, prev_reward):
-            action = self.agent.step(observation, prev_action, prev_reward)
-            observation, reward, _ = self._game.play(action)
-            observations = crop_and_repaint(observation)
             if self._total_return is None:
                 self._total_return = reward
             elif reward is not None:
                 self._total_return += reward
 
-            # Update the game display, regardless of whether we've called the game's
-            # play() method.
             elapsed = datetime.datetime.now() - self._start_time
-            self._display(screen, observations, self._total_return, elapsed)
+            self._display(screen, [self._env.last_observations], self._total_return, elapsed)
 
-            # Update game console message buffer with new messages from the game.
             self._update_game_console(
-                plab_logging.consume(self._game.the_plot), console, paint_console)
+                plab_logging.consume(self._env.current_game.the_plot), console, paint_console)
 
-            # Show the screen to the user.
             curses.doupdate()
 
             prev_action = action
             prev_reward = reward
-            observation = observation_to_tensor(observation)
 
     def _display(self, screen, observations, score, elapsed):
         """Redraw the game board onto the screen, with elapsed time and score.

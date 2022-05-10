@@ -194,6 +194,14 @@ class PyColabEnv(gym.Env):
         self.heatmap_save_freq = 3 # save heatmaps every 3 episodes
         self.heatmap = np.ones((5, 5)) # stores counts each episode (5x5 is a placeholder)
 
+    @property
+    def last_reward(self):
+        return self._last_reward
+
+    @property
+    def last_observations(self):
+        return self._last_uncropped_observations
+
     def pycolab_init(self, logdir, log_heatmaps):
         self.log_heatmaps = log_heatmaps
         root_path = os.path.abspath(__file__).split('/')[1:]
@@ -361,6 +369,7 @@ class PyColabEnv(gym.Env):
 
         # Execute the action in pycolab.
         self.current_game.the_plot.info = {}
+
         observations, reward, _ = self.current_game.play(action)
         self._last_uncropped_observations = observations
         self._empty_uncropped_board = np.zeros_like(self._last_uncropped_observations.board)

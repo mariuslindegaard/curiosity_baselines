@@ -1,4 +1,4 @@
-#include "sofm/art/OnlineFuzzyArt.h"
+#include "sofm/art/OnlineFuzzyART.h"
 #include <optional>
 #include <numeric>
 #include <algorithm>
@@ -36,7 +36,7 @@ namespace sofm
 
             Matrix w_old = Matrix::Constant(w_.rows(), w_.cols(), NAN);
 
-            std::vector<int> indices(features.rows());
+            std::vector<int> indices(num_datapoints);
             std::iota(indices.begin(), indices.end(), 0);
             auto rng = std::mt19937{std::random_device{}()};
 
@@ -84,26 +84,25 @@ namespace sofm
         {
             size_t num_categories = w_.rows();
 
-            Vector matches(Vector::NullaryExpr(num_categories, [&](Eigen::Index jx)
-                                               { return utils::category_choice(pattern, w_.row(jx), alpha_); }));
+            // Vector matches(Vector::NullaryExpr(num_categories, [&](Eigen::Index jx)
+            //                                    { return utils::category_choice(pattern, w_.row(jx), alpha_); }));
+
+            ActivationQueue matches;
+            for (size_t jx = 0; jx < num_categories; jx++) {
+                double activation = utils::category_choice(pattern, w_.row(jx), alpha_);
+                matches.emplace(activation, jx);
+            }
 
             double vigilance_test = rho_ * utils::max_norm(pattern);
-            int match_attempts = 0;
 
-            Eigen::Index winner;
-            while (match_attempts < num_categories)
+            while (!matches.empty())
             {
-                // This way of using maxCoeff writes argmax to winner
-                matches.maxCoeff(&winner);
+                int winner = matches.top().index;
+                matches.pop();
 
                 if (utils::max_norm(utils::fuzzy_and(pattern, w_.row(winner))) >= vigilance_test)
                 {
                     return winner;
-                }
-                else
-                {
-                    matches(winner) = 0;
-                    match_attempts++;
                 }
             }
 

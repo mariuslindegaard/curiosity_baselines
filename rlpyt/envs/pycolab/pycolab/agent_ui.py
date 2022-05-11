@@ -292,6 +292,8 @@ class CursesUi(object):
         # total return.
         # action = self._keycodes_to_actions[keycode]
         action = self.policy(observation, reward)
+        if action.item() == 4:
+          action = None
         observation, reward, _ = self._game.play(action)
         observations = crop_and_repaint(observation)
         if self._total_return is None:
